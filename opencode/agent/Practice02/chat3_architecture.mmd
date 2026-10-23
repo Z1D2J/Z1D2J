@@ -1,0 +1,67 @@
+%% chat3.py 代码架构图
+%% 渲染: mermaid-cli / VS Code Mermaid 插件 / https://mermaid.live
+flowchart TD
+    Start([启动 python chat3.py]) --> LoadCfg["load_config()<br/>优先级: config.ini → 环境变量 → 默认值"]
+    LoadCfg -- "ConfigError" --> ErrCfg["打印中文错误<br/>return 1"]
+    LoadCfg --> Prompt["read_prompt()<br/>input('请输入提示词: ')"]
+    Prompt -- "空 / Ctrl+C" --> Exit([退出])
+    Prompt --> AddUser["history.append<br/>role=user"]
+
+    AddUser --> Stream["open_stream()<br/>POST {base_url}/chat/completions<br/>stream=true, tools=TOOLS"]
+    Stream -- "HTTPError" --> HttpErr["http_error_message()<br/>401/403/404/429/5xx 分类提示"]
+    Stream -- "Timeout / 断流 / ValueError" --> NetErr["超时 / 网络失败 / 接口错误"]
+    HttpErr --> Fail(["fail(msg) return 1"])
+    NetErr --> Fail
+
+    Stream --> Events["iter_events(resp)<br/>逐行解析 SSE data: 事件"]
+    Events -- "text 分片" --> Print["print 流式打印<br/>累积 reply_parts"]
+    Events -- "reasoning 分片" --> Rc["累积 reasoning_parts<br/>随 assistant 消息回传"]
+    Events -- "tool_calls" --> Collect["按 index 聚合标准格式<br/>id + type=function + function.name/arguments"]
+
+    Print --> CheckCalls{"tool_calls 为空?"}
+    Collect --> CheckCalls
+    CheckCalls -- "是: 最终回复" --> PushAsst["history.append<br/>role=assistant"]
+    PushAsst --> Prompt2{"还有下一轮?"}
+    Prompt2 -- "是" --> Prompt
+    Prompt2 -- "否" --> Exit
+
+    CheckCalls -- "否: 需执行工具" --> PushToolMsg["history.append<br/>assistant + tool_calls"]
+    PushToolMsg --> Dispatch["dispatch_tool(call)"]
+    Dispatch --> PrintRes["print('[tool] name → result')<br/>history.append role=tool"]
+    PrintRes --> Round{"rounds > MAX_TOOL_ROUNDS(10)?"}
+    Round -- "是" --> Fail
+    Round -- "否: 继续对话循环" --> Stream
+
+    Dispatch --> D1{"工具名?"}
+    D1 -- "getDate" --> TDate["run_date_command()<br/>subprocess 调用本地 date 命令"]
+    D1 -- "isLeapYear" --> TLeap["check_leap_year()<br/>JSON 解析 + is_leap_year()"]
+    D1 -- "10 个文件工具之一" --> Handlers["FILE_TOOL_HANDLERS<br/>name → make_handler(func)"]
+    D1 -- "其他" --> Unknown["返回 '未知工具'"]
+
+    Handlers --> Parse["parse_arguments()<br/>JSON 校验"]
+    Parse --> Validate["required / optional 参数校验"]
+    Validate --> Core["调用对应工具函数<br/>OSError 统一捕获"]
+    Validate -- "缺参 / 非法 JSON" --> ErrArgs["返回参数错误文案"]
+
+    subgraph FILE_TOOLS [本地文件操作工具集]
+        Core --> F1["getToolsDirectory<br/>Path(__file__).parent"]
+        Core --> F2["list_directory<br/>iterdir + 排序"]
+        Core --> F3["get_file_type<br/>扩展名 / mimetypes / size"]
+        Core --> F4["read_text_file<br/>load_text_file 纯文本校验<br/>超长截断 MAX_READ_CHARS"]
+        Core --> F5["create_text_file<br/>mkdir parents=True 自动建目录"]
+        Core --> F6["edit_text_file<br/>write / append / replace"]
+        Core --> F7["create_directory<br/>mkdir parents=True exist_ok"]
+        Core --> F8["delete_directory<br/>shutil.rmtree 非空目录<br/>_guard_removable 防误删"]
+        Core --> F9["delete_file<br/>Path.unlink"]
+        Core --> F10["rename_item<br/>Path.rename 支持跨目录"]
+    end
+
+    F4 -. "复用" .-> Helper["load_text_file()<br/>NUL 字节二进制检测<br/>utf-8 / gbk 解码"]
+    F6 -. "复用" .-> Helper
+    F8 -. "复用" .-> Guard["_guard_removable()<br/>拒绝磁盘根目录 / 工具自身目录"]
+
+    style FILE_TOOLS fill:#eef6ff,stroke:#4a90d9
+    style ErrCfg fill:#ffe0e0,stroke:#c00
+    style Fail fill:#ffe0e0,stroke:#c00
+    style ErrArgs fill:#ffe0e0,stroke:#c00
+    style Unknown fill:#ffe0e0,stroke:#c00

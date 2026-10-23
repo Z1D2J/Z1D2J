@@ -1,0 +1,83 @@
+/* sAgent TUI 样式: 左侧对话 + 右侧实时面板 */
+
+Screen {
+    layout: vertical;
+}
+
+#main {
+    height: 1fr;
+}
+
+#left {
+    width: 1fr;
+    height: 100%;
+}
+
+#transcript {
+    height: 1fr;
+    border-top: none;
+    background: $surface;
+}
+
+#composer {
+    dock: bottom;
+    height: auto;
+    border-top: tall $accent;
+    background: $panel;
+}
+
+#composer:focus {
+    border-top: tall $success;
+}
+
+#live {
+    width: 38%;
+    min-width: 28;
+    border-left: tall $accent;
+    background: $panel;
+    padding: 0 1;
+}
+
+.pane-title {
+    text-style: bold;
+    color: $accent;
+    margin-top: 1;
+    margin-bottom: 0;
+    width: 100%;
+}
+
+.pane-title.hidden {
+    display: none;
+}
+
+#live-thinking {
+    color: $text-muted;
+    height: auto;
+    max-height: 12;
+    overflow-y: auto;
+    margin-bottom: 1;
+}
+
+#live-thinking.hidden {
+    display: none;
+}
+
+#live-reply {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#live-tools {
+    color: $warning;
+    height: auto;
+    max-height: 8;
+    overflow-y: auto;
+}
+
+#status {
+    dock: bottom;
+    height: 1;
+    background: $accent-darken-2;
+    color: $text;
+    padding: 0 1;
+}
