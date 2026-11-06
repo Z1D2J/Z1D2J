@@ -1,2 +1,5 @@
 textual>=8.0
 requests>=2.31
+trafilatura>=2.0
+pyyaml>=6.0
+mcp>=1.10.0

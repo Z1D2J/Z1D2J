@@ -52,8 +52,12 @@ def main(argv=None) -> int:
             f"界面 '{args.ui}' 尚未实现。当前可用: {', '.join(sorted(UI_BACKENDS))}。",
             file=sys.stderr,
         )
+        agent.close()
         return 2
-    return factory(agent)
+    try:
+        return factory(agent)
+    finally:
+        agent.close()
 
 
 if __name__ == "__main__":

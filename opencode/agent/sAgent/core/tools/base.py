@@ -78,6 +78,10 @@ class ToolRegistry:
     def register(self, spec: ToolSpec) -> None:
         self._tools[spec.name] = spec
 
+    def names(self) -> list:
+        """已注册的工具名列表(用于 MCP 工具命名冲突检测)。"""
+        return list(self._tools)
+
     def definitions(self) -> list:
         """OpenAI tools 数组格式的工具定义。"""
         return [spec.to_openai() for spec in self._tools.values()]

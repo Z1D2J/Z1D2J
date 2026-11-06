@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "Bazi-MCP": {
+      "type": "streamable_http",
+      "url": "https://mcp.api-inference.modelscope.net/32ccd1fbdcda43/mcp",
+      "headers": {
+        "Authorization": "Bearer <Your ModelScope Token>"
+      },
+      "connectTimeout": 20,
+      "callTimeout": 120
+    }
+  }
+}

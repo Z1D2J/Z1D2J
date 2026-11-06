@@ -65,6 +65,65 @@ class ErrorEvent:
     message: str
 
 
+@dataclass(frozen=True)
+class ContextStatus:
+    """当前会话的上下文占用情况。"""
+
+    tokens: int
+    window: int
+    percent: float
+    default_window: bool
+
+
+@dataclass(frozen=True)
+class ContextWarning:
+    """上下文达到压缩阈值时的提示。"""
+
+    message: str
+
+
+@dataclass(frozen=True)
+class CompactionStarted:
+    """用户执行 /compact,开始压缩上下文。"""
+
+
+@dataclass(frozen=True)
+class CompactionFinished:
+    """压缩成功: 附带归档编号和压缩前后的文本,供 UI 对照显示。"""
+
+    archive_id: str
+    created_at: str
+    original: str
+    summary: str
+
+
+@dataclass(frozen=True)
+class CompactionFailed:
+    """压缩失败,原有上下文保持不变。"""
+
+    message: str
+
+
+@dataclass(frozen=True)
+class McpServerInfo:
+    """单个 MCP Server 的连接状态与可用工具。"""
+
+    name: str
+    transport: str
+    connected: bool
+    tools: tuple = ()
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class McpStatus:
+    """MCP 异步加载状态;loading=True 表示仍在连接。"""
+
+    loading: bool
+    servers: tuple = ()
+    errors: tuple = ()
+
+
 AgentEvent = Union[
     TurnStarted,
     TextDelta,
@@ -74,6 +133,13 @@ AgentEvent = Union[
     AssistantMessage,
     TurnFinished,
     ErrorEvent,
+    ContextStatus,
+    ContextWarning,
+    CompactionStarted,
+    CompactionFinished,
+    CompactionFailed,
+    McpServerInfo,
+    McpStatus,
 ]
 
 EventSink = Callable[[AgentEvent], None]

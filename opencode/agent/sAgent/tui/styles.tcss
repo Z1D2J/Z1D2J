@@ -20,7 +20,6 @@ Screen {
 }
 
 #composer {
-    dock: bottom;
     height: auto;
     border-top: tall $accent;
     background: $panel;
@@ -30,12 +29,50 @@ Screen {
     border-top: tall $success;
 }
 
-#live {
+#command-palette {
+    height: auto;
+    max-height: 12;
+    background: $panel;
+    border-top: tall $accent-darken-1;
+    padding: 0 1;
+}
+
+#palette-title {
+    height: 1;
+    color: $text-muted;
+}
+
+#command-options {
+    height: auto;
+    max-height: 10;
+    background: $panel;
+}
+
+#right {
     width: 38%;
     min-width: 28;
+    height: 100%;
     border-left: tall $accent;
+}
+
+#live {
+    width: 100%;
+    height: 1fr;
     background: $panel;
     padding: 0 1;
+}
+
+#mcp {
+    height: 35%;
+    min-height: 6;
+    border-top: solid $accent-darken-1;
+    background: $panel;
+    padding: 0 1;
+}
+
+#mcp-body {
+    height: auto;
+    color: $text-muted;
 }
 
 .pane-title {
@@ -80,4 +117,110 @@ Screen {
     background: $accent-darken-2;
     color: $text;
     padding: 0 1;
+}
+
+/* 上下文压缩前后对照面板 */
+CompactionScreen {
+    align: center middle;
+    background: $background 70%;
+}
+
+#compaction-dialog {
+    width: 92%;
+    height: 88%;
+    background: $surface;
+    border: thick $accent;
+    padding: 1 1;
+}
+
+#compaction-title {
+    height: 1;
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+#compaction-columns {
+    height: 1fr;
+}
+
+.compaction-col {
+    width: 1fr;
+    height: 100%;
+    border: solid $accent-darken-1;
+    padding: 0 1;
+}
+
+#compaction-left {
+    margin-right: 1;
+}
+
+.compaction-heading {
+    height: 1;
+    text-style: bold;
+    color: $warning;
+    margin-bottom: 1;
+}
+
+.compaction-scroll {
+    height: 1fr;
+}
+
+.compaction-body {
+    width: 100%;
+}
+
+#compaction-close {
+    width: 16;
+    height: 3;
+    margin-top: 1;
+}
+
+/* 会话列表 / 配置提示弹窗 */
+SessionListScreen, ConfigNoticeScreen {
+    align: center middle;
+    background: $background 70%;
+}
+
+#session-dialog {
+    width: 86%;
+    height: 72%;
+    background: $surface;
+    border: thick $accent;
+    padding: 1 1;
+}
+
+#session-title, #config-title {
+    height: 1;
+    text-style: bold;
+    color: $accent;
+    margin-bottom: 1;
+}
+
+#session-options {
+    height: 1fr;
+}
+
+#session-hint {
+    height: 1;
+    color: $text-muted;
+    margin-top: 1;
+}
+
+#config-dialog {
+    width: 70%;
+    height: auto;
+    background: $surface;
+    border: thick $warning;
+    padding: 1 2;
+}
+
+#config-body {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#config-ok {
+    width: 16;
+    height: 3;
 }

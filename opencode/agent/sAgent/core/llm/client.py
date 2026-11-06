@@ -36,7 +36,16 @@ class StreamToolCalls:
     calls: List[dict]
 
 
-StreamEvent = Union[StreamText, StreamReasoning, StreamToolCalls]
+@dataclass(frozen=True)
+class StreamUsage:
+    """模型 API 返回的 Token 使用信息;接口不提供时不会产出本事件。"""
+
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+StreamEvent = Union[StreamText, StreamReasoning, StreamToolCalls, StreamUsage]
 
 
 def _error_detail(response) -> str:
@@ -50,6 +59,23 @@ def _error_detail(response) -> str:
     if isinstance(message, str) and message.strip():
         return message.strip()[:300]
     return ""
+
+
+def _mentions_stream_options(response) -> bool:
+    if response is None:
+        return False
+    try:
+        body = (response.text or "").lower()
+    except Exception:
+        return False
+    return "stream_options" in body or "include_usage" in body
+
+
+def _int_value(value) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _http_error_message(exc: requests.exceptions.HTTPError, timeout: int) -> str:
@@ -73,35 +99,57 @@ class LLMClient:
     def __init__(self, settings: Settings):
         self._settings = settings
 
+    def _post(self, messages: list, tools: list, include_usage: bool):
+        settings = self._settings
+        payload = {
+            "model": settings.model,
+            "messages": messages,
+            "stream": True,
+        }
+        if tools:
+            payload["tools"] = tools
+        if include_usage:
+            payload["stream_options"] = {"include_usage": True}
+        return requests.post(
+            f"{settings.base_url}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.api_key}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            stream=True,
+            timeout=(settings.connect_timeout, settings.timeout),
+        )
+
     def stream(self, messages: list, tools: list) -> Iterator[StreamEvent]:
         """发起流式请求并按序产出 StreamEvent;错误以 AgentError 抛出。"""
         settings = self._settings
+        include_usage = settings.include_usage
+        resp = None
         try:
-            resp = requests.post(
-                f"{settings.base_url}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.model,
-                    "messages": messages,
-                    "stream": True,
-                    "tools": tools,
-                },
-                stream=True,
-                timeout=(10, settings.timeout),
-            )
+            resp = self._post(messages, tools, include_usage)
+            try:
+                resp.raise_for_status()
+            except requests.exceptions.HTTPError as exc:
+                # 少数兼容接口不认识 stream_options,此时退回不带 usage 的请求。
+                if include_usage and _mentions_stream_options(exc.response):
+                    resp.close()
+                    resp = self._post(messages, tools, False)
+                    resp.raise_for_status()
+                else:
+                    raise
         except requests.exceptions.Timeout as exc:
+            if resp is not None:
+                resp.close()
             raise AgentError(f"请求超时 (>{settings.timeout}s),请稍后重试。") from exc
-        except requests.exceptions.RequestException as exc:
-            raise AgentError("网络连接失败或传输中断,请检查网络后重试。") from exc
-
-        try:
-            resp.raise_for_status()
         except requests.exceptions.HTTPError as exc:
-            resp.close()
+            if resp is not None:
+                resp.close()
             raise AgentError(_http_error_message(exc, settings.timeout)) from exc
+        except requests.exceptions.RequestException as exc:
+            if resp is not None:
+                resp.close()
+            raise AgentError("网络连接失败或传输中断,请检查网络后重试。") from exc
         resp.encoding = "utf-8"
 
         try:
@@ -131,6 +179,16 @@ class LLMClient:
                 err = data["error"]
                 message = err.get("message") if isinstance(err, dict) else err
                 raise AgentError(f"接口返回错误: {message}")
+
+            usage = data.get("usage")
+            if isinstance(usage, dict):
+                prompt_tokens = _int_value(usage.get("prompt_tokens"))
+                completion_tokens = _int_value(usage.get("completion_tokens"))
+                total_tokens = _int_value(usage.get("total_tokens"))
+                if not total_tokens:
+                    total_tokens = prompt_tokens + completion_tokens
+                yield StreamUsage(prompt_tokens, completion_tokens, total_tokens)
+
             choices = data.get("choices")
             if not choices:
                 continue

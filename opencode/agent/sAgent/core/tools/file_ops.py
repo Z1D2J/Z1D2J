@@ -11,6 +11,7 @@ from pathlib import Path
 from .base import ToolRegistry, ToolSpec, make_handler
 
 MAX_READ_CHARS = 20000
+MAX_READ_CHARS_RUNTIME = MAX_READ_CHARS
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -83,8 +84,9 @@ def read_text_file(path: str) -> str:
     text, err = load_text_file(p)
     if err:
         return f"错误: {err}"
-    if len(text) > MAX_READ_CHARS:
-        return text[:MAX_READ_CHARS] + f"\n...(内容过长已截断,文件共 {len(text)} 字符)"
+    limit = MAX_READ_CHARS_RUNTIME
+    if len(text) > limit:
+        return text[:limit] + f"\n...(内容过长已截断,文件共 {len(text)} 字符)"
     return text
 
 
@@ -325,7 +327,9 @@ _SPECS = [
 ]
 
 
-def register(registry: ToolRegistry) -> None:
+def register(registry: ToolRegistry, max_read_chars: int = MAX_READ_CHARS) -> None:
+    global MAX_READ_CHARS_RUNTIME
+    MAX_READ_CHARS_RUNTIME = max_read_chars
     for name, description, parameters, func, required, optional in _SPECS:
         registry.register(
             ToolSpec(
